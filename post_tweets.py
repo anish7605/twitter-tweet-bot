@@ -6,6 +6,7 @@ import time
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 import tweets_data as td
+import news_data as nd
 
 
 class TwitterPoster:
@@ -243,8 +244,8 @@ class TwitterPoster:
 # Simple example usage
 def main():
     # Your list of tweets
-    my_tweets = td.tweets_0 + td.tweets_1 + td.tweets_2 + td.tweets_3 + td.tweets_4
-    
+    # my_tweets = td.tweets_0 + td.tweets_1 + td.tweets_2 + td.tweets_3 + td.tweets_4
+    news = nd.news_data
     poster = TwitterPoster()
     
     # STEP 1: First time only - set up your login
@@ -255,7 +256,7 @@ def main():
     # Comment out setup_first_time() above, then use this:
     try:
         poster.start(headless=False)  # Set headless=True to hide browser
-        poster.post_tweets(my_tweets, delay_between=10)
+        poster.post_tweets(news, delay_between=10)
     finally:
         poster.close()
 
