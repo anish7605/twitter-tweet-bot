@@ -246,7 +246,8 @@ class ConcurrentTwitterPoster:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    news = gp.modern_cpp_prompts
+    news = gp.docker_kubernetes_prompts + gp.linux_prompts + gp.pentesting_prompts + gp.scrum_prompts \
+        + gp.sysadmin_prompts + gp.systems_programming_prompts + gp.cloud_computing_prompts
     poster = ConcurrentTwitterPoster(profile_dir="./twitter_browser_profile")
 
     # First time only — uncomment and run once:
