@@ -1,4 +1,3 @@
-cat > /mnt/user-data/outputs/run_bot.sh << 'EOF'
 #!/bin/bash
 
 echo "========================================"
@@ -20,5 +19,3 @@ python3 auto-reposter.py
 
 echo ""
 echo "Done."
-EOF
-chmod +x /mnt/user-data/outputs/run_bot.sh

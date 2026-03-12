@@ -246,7 +246,7 @@ class ConcurrentTwitterPoster:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    news = gp.rust_prompts
+    news = gp.modern_cpp_prompts
     poster = ConcurrentTwitterPoster(profile_dir="./twitter_browser_profile")
 
     # First time only — uncomment and run once:
@@ -254,7 +254,7 @@ def main():
 
     poster.post_tweets(
         tweets=news,
-        num_sessions=4,      # 3-5 parallel windows
+        num_sessions=5,      # 3-5 parallel windows
         delay_between=10,
         headless=False,
     )

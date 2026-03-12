@@ -3803,3 +3803,335 @@ rust_prompts = [
     "@grok What is serde in Rust and how does it enable serialization/deserialization?",
 ]
 
+modern_cpp_prompts = [
+
+    # ─────────────────────────────────────────
+    # BASIC (75 prompts)
+    # ─────────────────────────────────────────
+
+    # Fundamentals & Setup
+    "@grok What is modern C++ and which standards are considered modern (C++11 onwards)?",
+    "@grok What are the key differences between C++11, C++14, C++17, and C++20?",
+    "@grok How do you compile a C++ program with a specific standard using g++?",
+    "@grok What is the difference between #include <iostream> and #include <stdio.h> in modern C++?",
+    "@grok What is the nullptr keyword in C++11 and why does it replace NULL?",
+    "@grok What is auto type deduction in C++11 and how does it work?",
+    "@grok What is the difference between auto and decltype in C++11?",
+    "@grok What is a range-based for loop in C++11 and how do you use it?",
+    "@grok What is the override keyword in C++11 and why should you use it?",
+    "@grok What is the final keyword in C++11 and when do you apply it?",
+    "@grok What is the delete keyword for functions in C++11?",
+    "@grok What is the default keyword for special member functions in C++11?",
+    "@grok What is a delegating constructor in C++11?",
+    "@grok What is uniform initialization (brace initialization) in C++11?",
+    "@grok What is std::initializer_list and how does it work with brace initialization?",
+
+    # Type System
+    "@grok What is a strongly typed enum (enum class) in C++11 and how does it differ from a plain enum?",
+    "@grok What is static_assert in C++11 and how is it used?",
+    "@grok What is the alignas specifier in C++11?",
+    "@grok What is the alignof operator in C++11?",
+    "@grok What is constexpr in C++11 and what does it guarantee?",
+    "@grok How did constexpr change between C++11, C++14, and C++17?",
+    "@grok What is the difference between const and constexpr?",
+    "@grok What is decltype and how do you use it to query a type?",
+    "@grok What is trailing return type syntax in C++11?",
+    "@grok What is std::byte in C++17 and when should you use it?",
+
+    # Strings & I/O
+    "@grok What are raw string literals in C++11 and how do you write one?",
+    "@grok What are user-defined literals in C++11? Give an example.",
+    "@grok What is std::string_view in C++17 and why is it preferred over const std::string&?",
+    "@grok What is the difference between std::string and std::string_view?",
+    "@grok How do you convert between std::string and numeric types in modern C++?",
+    "@grok What are std::to_string and std::stoi and when do you use them?",
+    "@grok What is std::format in C++20 and how does it improve string formatting?",
+    "@grok What is structured binding in C++17? Give an example.",
+    "@grok How do you use structured bindings with std::map iteration?",
+    "@grok What is if constexpr in C++17 and how does it differ from a regular if?",
+
+    # Functions
+    "@grok What is a lambda expression in C++11 and what is its basic syntax?",
+    "@grok What is a capture list in a lambda and what are the capture modes?",
+    "@grok What is a generic lambda in C++14?",
+    "@grok What is a variadic template in C++11?",
+    "@grok What is a fold expression in C++17?",
+    "@grok What is std::function and when would you use it over a raw function pointer?",
+    "@grok What is perfect forwarding in C++11 and why is it useful?",
+    "@grok What is std::invoke in C++17?",
+    "@grok What is [[nodiscard]] in C++17 and why should you use it?",
+    "@grok What is [[maybe_unused]] in C++17?",
+
+    # Memory & Ownership Basics
+    "@grok What is a smart pointer in C++11 and why do they replace raw new/delete?",
+    "@grok What is std::unique_ptr and how do you create one?",
+    "@grok What is std::make_unique and why is it preferred over new?",
+    "@grok What is std::shared_ptr and how does reference counting work?",
+    "@grok What is std::make_shared and why is it preferred over new with shared_ptr?",
+    "@grok What is std::weak_ptr and what problem does it solve?",
+    "@grok What is RAII and how do smart pointers implement it?",
+    "@grok What is a move constructor in C++11?",
+    "@grok What is a move assignment operator in C++11?",
+    "@grok What is the rule of five in modern C++?",
+
+    # Containers & Algorithms
+    "@grok What new containers were added in C++11 and later standards?",
+    "@grok What is std::array and how does it differ from a C-style array?",
+    "@grok What is std::unordered_map and how does it differ from std::map?",
+    "@grok What is std::unordered_set and when would you use it?",
+    "@grok What is std::tuple and how do you access its elements?",
+    "@grok What is std::tie and how does it unpack a tuple?",
+    "@grok What is std::pair and how does std::make_pair work?",
+    "@grok What is std::optional in C++17 and what problem does it solve?",
+    "@grok What is std::variant in C++17 and how do you use std::visit with it?",
+    "@grok What is std::any in C++17 and when should you use it?",
+    "@grok What is std::span in C++20 and why is it useful?",
+    "@grok How do you use std::begin and std::end with generic algorithms?",
+    "@grok What is the difference between std::find and std::find_if?",
+    "@grok What is std::transform and how do you use it with a lambda?",
+    "@grok What is std::accumulate and how does it work?",
+
+    # ─────────────────────────────────────────
+    # INTERMEDIATE (75 prompts)
+    # ─────────────────────────────────────────
+
+    # Move Semantics & Value Categories
+    "@grok What are lvalues and rvalues in C++11?",
+    "@grok What is an rvalue reference (&&) in C++11?",
+    "@grok What is std::move and what does it actually do to an object?",
+    "@grok What is std::forward and how does it enable perfect forwarding?",
+    "@grok What is a universal reference (forwarding reference) in C++11?",
+    "@grok What is the difference between std::move and std::forward?",
+    "@grok What is copy elision and what is RVO (Return Value Optimization)?",
+    "@grok What is NRVO (Named Return Value Optimization)?",
+    "@grok What is guaranteed copy elision introduced in C++17?",
+    "@grok What is the rule of zero in modern C++ and why is it preferred?",
+
+    # Templates
+    "@grok What is template argument deduction in C++17 (CTAD)?",
+    "@grok What is a variadic template pack expansion and how does it work?",
+    "@grok What is SFINAE and how is it used in template metaprogramming?",
+    "@grok What is std::enable_if and how do you use it to constrain templates?",
+    "@grok What is a type trait in C++ and name five from <type_traits>?",
+    "@grok What is std::is_same and how do you use it?",
+    "@grok What is std::conditional and how does it select types at compile time?",
+    "@grok What is a template specialization and when do you need one?",
+    "@grok What is a partial template specialization?",
+    "@grok What are concepts in C++20 and how do they replace SFINAE?",
+    "@grok How do you define a concept in C++20?",
+    "@grok What is the requires clause in C++20?",
+    "@grok What is a requires expression in C++20?",
+    "@grok What are the four kinds of constraints in C++20 concepts?",
+    "@grok What are the standard library concepts in C++20 (std::integral, std::same_as, etc.)?",
+
+    # Concurrency
+    "@grok What threading support was added in C++11?",
+    "@grok How do you create a thread using std::thread in C++11?",
+    "@grok What is std::thread::join and std::thread::detach?",
+    "@grok What is a std::mutex and how do you use it?",
+    "@grok What is std::lock_guard and why is it preferred over manual lock/unlock?",
+    "@grok What is std::unique_lock and how does it differ from std::lock_guard?",
+    "@grok What is std::scoped_lock in C++17 and how does it prevent deadlocks?",
+    "@grok What is std::condition_variable and how is it used for thread synchronization?",
+    "@grok What is std::atomic and when should you use it instead of a mutex?",
+    "@grok What is std::async and how does it launch asynchronous tasks?",
+    "@grok What is std::future and std::promise in C++11?",
+    "@grok What is std::packaged_task in C++11?",
+    "@grok What are memory ordering constraints in std::atomic operations?",
+    "@grok What is a data race and how does C++11's memory model address it?",
+    "@grok What is std::call_once and std::once_flag?",
+
+    # Lambdas & Functional
+    "@grok What is a mutable lambda and when do you need it?",
+    "@grok What is a recursive lambda in C++14 and C++23?",
+    "@grok How do you store a lambda in a variable with auto vs std::function?",
+    "@grok What is a lambda with a template parameter list in C++20?",
+    "@grok What are immediately invoked lambdas (IIFE) in C++?",
+    "@grok What is std::bind and when should you prefer a lambda over it?",
+    "@grok What is partial function application in C++ using lambdas?",
+    "@grok What is std::ref and std::cref and when do you need them with std::bind?",
+    "@grok What is a higher-order function in C++ and give an example?",
+    "@grok What is std::not_fn in C++17?",
+
+    # Ranges & Algorithms (C++20)
+    "@grok What is the ranges library in C++20?",
+    "@grok What is a range in C++20 and how does it differ from an iterator pair?",
+    "@grok What is a view in C++20 ranges?",
+    "@grok What is range composition with the pipe operator | in C++20?",
+    "@grok What is std::views::filter and how do you use it?",
+    "@grok What is std::views::transform and how do you use it?",
+    "@grok What is std::views::take and std::views::drop?",
+    "@grok What is a lazy range in C++20 and why is it efficient?",
+    "@grok What is std::ranges::sort and how does it differ from std::sort?",
+    "@grok What is a projection in C++20 ranges algorithms?",
+
+    # Error Handling & Utilities
+    "@grok What is std::expected in C++23 and how does it improve error handling?",
+    "@grok What is std::error_code and std::error_category in modern C++?",
+    "@grok How do you use noexcept in C++11 and what does it guarantee?",
+    "@grok What is the noexcept operator in C++11?",
+    "@grok What is std::system_error in C++11?",
+    "@grok What is std::chrono in C++11 and how do you measure elapsed time?",
+    "@grok What are std::chrono duration literals in C++14?",
+    "@grok What is std::filesystem in C++17?",
+    "@grok How do you iterate over a directory using std::filesystem?",
+    "@grok What is std::source_location in C++20?",
+
+    # ─────────────────────────────────────────
+    # ADVANCED (75 prompts)
+    # ─────────────────────────────────────────
+
+    # Template Metaprogramming
+    "@grok What is template metaprogramming (TMP) in C++?",
+    "@grok What is a compile-time factorial using recursive templates?",
+    "@grok What is std::integer_sequence and how is it used?",
+    "@grok What is std::index_sequence and how do you use it to unpack tuples?",
+    "@grok What is a type list in template metaprogramming?",
+    "@grok What is tag dispatching in C++ template metaprogramming?",
+    "@grok What is policy-based design in C++?",
+    "@grok What is the Curiously Recurring Template Pattern (CRTP)?",
+    "@grok How do you use CRTP to implement static polymorphism?",
+    "@grok What is expression templates in C++ and what problem do they solve?",
+    "@grok What is a consteval function in C++20 and how does it differ from constexpr?",
+    "@grok What is a constinit variable in C++20?",
+    "@grok What is std::is_constant_evaluated in C++20?",
+    "@grok What is a non-type template parameter in C++20 (floating point, class types)?",
+    "@grok What is abbreviated function templates using auto parameters in C++20?",
+
+    # Memory Model & Low-Level
+    "@grok What is placement new in C++ and when do you use it?",
+    "@grok What is std::allocator and how do you write a custom allocator?",
+    "@grok What is std::pmr (polymorphic memory resources) in C++17?",
+    "@grok What is a memory pool and how do you implement one in C++?",
+    "@grok What is std::pmr::monotonic_buffer_resource?",
+    "@grok What is std::launder in C++17 and when is it needed?",
+    "@grok What is strict aliasing in C++ and why does it matter for optimization?",
+    "@grok What is std::bit_cast in C++20 and how does it differ from reinterpret_cast?",
+    "@grok What is the difference between reinterpret_cast, static_cast, and std::bit_cast?",
+    "@grok What is volatile in C++ and when is it actually needed?",
+
+    # Coroutines (C++20)
+    "@grok What are coroutines in C++20 and what problem do they solve?",
+    "@grok What are the three coroutine keywords in C++20?",
+    "@grok What is a coroutine handle in C++20?",
+    "@grok What is a promise_type in a C++20 coroutine?",
+    "@grok What is co_await and how does it suspend a coroutine?",
+    "@grok What is co_yield and how does it produce values lazily?",
+    "@grok What is co_return in a C++20 coroutine?",
+    "@grok What is an awaitable type in C++20 and what interface must it implement?",
+    "@grok How do you implement a simple generator using C++20 coroutines?",
+    "@grok What is std::generator in C++23?",
+
+    # Design Patterns & Idioms
+    "@grok What is the pimpl (pointer to implementation) idiom in C++?",
+    "@grok What is the type erasure idiom in C++ and how does std::function use it?",
+    "@grok What is the mixin pattern using CRTP in C++?",
+    "@grok What is the named parameter idiom in C++?",
+    "@grok What is the passkey idiom in C++?",
+    "@grok What is the copy-and-swap idiom and why is it useful?",
+    "@grok What is the small buffer optimization (SBO) used by std::function and std::string?",
+    "@grok What is the virtual dispatch table (vtable) and how does the compiler implement it?",
+    "@grok What is devirtualization and when does the compiler perform it?",
+    "@grok What is the non-virtual interface (NVI) pattern?",
+
+    # Modules & Build (C++20)
+    "@grok What are C++20 modules and how do they replace header files?",
+    "@grok What is the difference between a module interface unit and a module implementation unit?",
+    "@grok What is the export keyword in a C++20 module?",
+    "@grok What is import std in C++23?",
+    "@grok What are module partitions in C++20?",
+    "@grok How do modules improve compilation speed over headers?",
+    "@grok What is a header unit in C++20?",
+    "@grok What is the three-way comparison operator (spaceship operator <=>) in C++20?",
+    "@grok How does operator<=> enable automatic generation of comparison operators?",
+    "@grok What is std::strong_ordering, std::weak_ordering, and std::partial_ordering?",
+
+    # Performance & Optimization
+    "@grok What is [[likely]] and [[unlikely]] in C++20 and how do they hint the compiler?",
+    "@grok What is link-time optimization (LTO) and how do you enable it in GCC/Clang?",
+    "@grok What is profile-guided optimization (PGO) in C++?",
+    "@grok What is cache-friendly data layout and how does struct of arrays differ from array of structs?",
+    "@grok What is branch prediction and how can you optimize for it in C++?",
+    "@grok What is SIMD and how do you use intrinsics in C++?",
+    "@grok What is std::execution::par in C++17 parallel algorithms?",
+    "@grok What is the difference between std::execution::seq, par, par_unseq, and unseq?",
+    "@grok What is zero-overhead abstraction in C++ and give two examples?",
+    "@grok How do you use perf or valgrind to profile a C++ program?",
+
+    # ─────────────────────────────────────────
+    # CONCEPTS & DESIGN (75 prompts)
+    # ─────────────────────────────────────────
+
+    # Object-Oriented Modern C++
+    "@grok What is aggregate initialization in C++17 and C++20?",
+    "@grok What is a designated initializer in C++20?",
+    "@grok What is the difference between public, protected, and private inheritance?",
+    "@grok What is virtual inheritance and when is it needed?",
+    "@grok What is the diamond problem in C++ and how is it solved?",
+    "@grok What is an abstract class in C++ and how do you define a pure virtual function?",
+    "@grok What is covariant return type in C++ virtual functions?",
+    "@grok What is the vtable pointer overhead and how can you avoid virtual dispatch?",
+    "@grok What is object slicing in C++ and how do you prevent it?",
+    "@grok What is std::variant as an alternative to class hierarchies?",
+
+    # Generic Programming
+    "@grok What is the difference between object-oriented and generic programming in C++?",
+    "@grok What are named requirements (concepts) in the C++ standard library?",
+    "@grok What is the iterator concept hierarchy in C++ (input, forward, bidirectional, random access)?",
+    "@grok What is a sentinel in C++20 ranges?",
+    "@grok What is the difference between std::ranges::range and std::ranges::sized_range?",
+    "@grok What is a contiguous_range in C++20?",
+    "@grok What is duck typing in C++ templates?",
+    "@grok What is the difference between static and dynamic polymorphism in C++?",
+    "@grok What is a compile-time interface vs a runtime interface in C++?",
+    "@grok What is ad-hoc polymorphism in C++ via function overloading?",
+
+    # Safety & Best Practices
+    "@grok What is the C++ Core Guidelines and who maintains it?",
+    "@grok What is a GSL (Guidelines Support Library) and what does it provide?",
+    "@grok What is gsl::span and how does it compare to std::span?",
+    "@grok What is gsl::not_null and what does it enforce?",
+    "@grok What is undefined behavior in C++ and give five common examples?",
+    "@grok What is the sanitizer suite (ASan, UBSan, TSan) and how do you enable them?",
+    "@grok What is AddressSanitizer and what bugs does it detect?",
+    "@grok What is UndefinedBehaviorSanitizer and what does it catch?",
+    "@grok What is ThreadSanitizer and what does it detect?",
+    "@grok What is [[nodiscard]] and how does it prevent silently ignored return values?",
+
+    # Ecosystem & Tooling
+    "@grok What is CMake and how do you write a modern CMakeLists.txt for a C++ project?",
+    "@grok What is target_compile_features in CMake and how do you require C++20?",
+    "@grok What is Conan and how does it manage C++ dependencies?",
+    "@grok What is vcpkg and how does it integrate with CMake?",
+    "@grok What is clang-tidy and how do you use it for static analysis?",
+    "@grok What is clang-format and how do you configure it?",
+    "@grok What is cppcheck and what kinds of bugs does it find?",
+    "@grok What is Google Test and how do you write a basic unit test in C++?",
+    "@grok What is Catch2 and how does it compare to Google Test?",
+    "@grok What is Google Benchmark and how do you write a micro-benchmark?",
+
+    # C++23 & Beyond
+    "@grok What are the major features added in C++23?",
+    "@grok What is std::print in C++23?",
+    "@grok What is std::flat_map in C++23?",
+    "@grok What is std::mdspan in C++23 and what problem does it solve?",
+    "@grok What is std::expected in C++23 and how does it model recoverable errors?",
+    "@grok What is explicit object parameters (deducing this) in C++23?",
+    "@grok How does deducing this simplify CRTP in C++23?",
+    "@grok What is std::generator in C++23 and how is it used?",
+    "@grok What is if consteval in C++23?",
+    "@grok What are the proposed major features for C++26?",
+
+    # Interoperability & Systems
+    "@grok How do you call C functions from C++ code?",
+    "@grok What is extern C and why is it needed?",
+    "@grok How do you interface C++ with Python using pybind11?",
+    "@grok What is SWIG and how does it generate C++ bindings?",
+    "@grok What is WebAssembly and how do you compile C++ to WASM using Emscripten?",
+    "@grok What is std::jthread in C++20 and how does it improve over std::thread?",
+    "@grok What is std::stop_token in C++20 and how does it enable cooperative cancellation?",
+    "@grok What is a freestanding C++ implementation and what is available without the OS?",
+    "@grok What is the <bit> header in C++20 and what utilities does it provide?",
+    "@grok What is std::endian in C++20 and how do you check the platform byte order?",
+]
+
