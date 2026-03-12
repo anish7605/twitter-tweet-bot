@@ -1,264 +1,263 @@
 """
-Twitter Poster - Synchronous Version (No async/await)
-Uses persistent browser profile for maximum reliability.
+Twitter Poster - Concurrent Async Version
+Uses playwright.async_api with asyncio.gather so all browser windows
+post truly in parallel. Persistent profile cloning preserves your login.
 """
-import time
-from playwright.sync_api import sync_playwright
+
+import asyncio
+import math
+import shutil
 from pathlib import Path
-import tweets_data as td
-import news_data as nd
+from playwright.async_api import async_playwright
+import grok_prompts as gp
 
 
-class TwitterPoster:
-    """
-    Synchronous Twitter poster using persistent browser context.
-    No async/await - simple and straightforward.
-    """
-    
-    def __init__(self, profile_dir="./twitter_browser_profile"):
+class ConcurrentTwitterPoster:
+
+    def __init__(self, profile_dir: str = "./twitter_browser_profile"):
         self.profile_dir = profile_dir
-        self.playwright = None
-        self.context = None
-        self.page = None
-    
+
+    # ── First-time login ───────────────────────────────────────────────────
+
     def setup_first_time(self):
-        """
-        Run this ONCE to set up your Twitter login.
-        Opens a browser where you log in manually.
-        Profile is saved and reused forever.
-        """
-        print("\n" + "="*70)
-        print("FIRST TIME SETUP - TWITTER LOGIN")
-        print("="*70)
-        print("\nA browser will open. Please:")
-        print("1. Log in to Twitter")
-        print("2. Complete any 2FA/verification if needed")
-        print("3. Wait until you see your Twitter home feed")
-        print("4. Come back here and press Enter")
-        print("\n" + "="*70 + "\n")
-        
-        self.playwright = sync_playwright().start()
-        
-        # Launch persistent context (saves everything automatically)
-        self.context = self.playwright.chromium.launch_persistent_context(
+        """Run once. Opens a real browser so you can log in manually."""
+        from playwright.sync_api import sync_playwright
+
+        print("\n" + "=" * 70)
+        print("FIRST TIME SETUP — TWITTER LOGIN")
+        print("=" * 70)
+        print("\nA browser will open. Please log in, then press Enter here.")
+        print("=" * 70 + "\n")
+
+        pw  = sync_playwright().start()
+        ctx = pw.chromium.launch_persistent_context(
             user_data_dir=self.profile_dir,
             headless=False,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage'
-            ],
-            viewport={'width': 1280, 'height': 800}
+            args=["--disable-blink-features=AutomationControlled",
+                  "--disable-dev-shm-usage"],
+            viewport={"width": 1280, "height": 800},
         )
-        
-        # Get the default page
-        if len(self.context.pages) > 0:
-            self.page = self.context.pages[0]
-        else:
-            self.page = self.context.new_page()
-        
-        # Go to Twitter
-        self.page.goto("https://twitter.com/login")
-        
-        # Wait for user to log in
-        input("\nPress Enter after you've successfully logged in... ")
-        
-        print("\n✓ Setup complete! Your browser profile is saved.")
-        print(f"  Profile location: {self.profile_dir}")
-        print("  You can now use post_tweets() without logging in again.\n")
-        
-        self.close()
-    
-    def start(self, headless=False):
-        """
-        Start browser with saved profile.
-        Call this before posting tweets.
-        """
-        if not Path(self.profile_dir).exists():
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        page.goto("https://twitter.com/login")
+        input("\nPress Enter after you have successfully logged in… ")
+        ctx.close()
+        pw.stop()
+        print(f"\n✓ Setup complete! Profile saved to: {self.profile_dir}\n")
+
+    # ── Profile cloning ────────────────────────────────────────────────────
+
+    _CHROME_SKIP = {
+        "SingletonLock", "SingletonSocket", "SingletonCookie",
+        "RunningChromeVersion", "lockfile", "LOG", "LOG.old",
+    }
+
+    def _clone_profiles(self, num_workers: int) -> list[str]:
+        master = Path(self.profile_dir)
+        if not master.exists():
             raise FileNotFoundError(
-                f"Browser profile not found: {self.profile_dir}\n"
-                "Run setup_first_time() first to create your profile."
+                f"Profile not found: {self.profile_dir}\n"
+                "Run setup_first_time() first."
             )
-        
-        self.playwright = sync_playwright().start()
-        
-        # Launch with saved profile
-        self.context = self.playwright.chromium.launch_persistent_context(
-            user_data_dir=self.profile_dir,
-            headless=headless,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage'
-            ],
-            viewport={'width': 1280, 'height': 800}
-        )
-        
-        # Get or create page
-        if len(self.context.pages) > 0:
-            self.page = self.context.pages[0]
-        else:
-            self.page = self.context.new_page()
-        
-        # Verify we're logged in
-        self.page.goto("https://twitter.com/home", wait_until="domcontentloaded")
-        time.sleep(2)
-        
-        if "login" in self.page.url:
-            self.close()
-            raise Exception(
-                "Not logged in. Your session may have expired.\n"
-                "Run setup_first_time() again to log in."
-            )
-        
-        print("✓ Started browser session - ready to post tweets")
-    
-    def post_tweet(self, tweet_text, wait_after=3):
-        """
-        Post a single tweet.
-        
-        Args:
-            tweet_text: The text content of the tweet
-            wait_after: Seconds to wait after posting (default 3)
-        
-        Returns:
-            bool: True if successful, False otherwise
-        """
+
+        def _ignore(src, names):
+            return [n for n in names if n in self._CHROME_SKIP]
+
+        worker_dirs = []
+        for i in range(num_workers):
+            dest = Path(f"{self.profile_dir}_worker_{i}")
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(master, dest, ignore=_ignore, symlinks=False)
+            worker_dirs.append(str(dest))
+            print(f"  Cloned profile -> {dest.name}")
+
+        return worker_dirs
+
+    # ── Helpers ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _split(tweets: list, n: int) -> list[list]:
+        chunk_size = math.ceil(len(tweets) / n)
+        return [tweets[i: i + chunk_size] for i in range(0, len(tweets), chunk_size)]
+
+    # ── Async worker ───────────────────────────────────────────────────────
+
+    async def _post_one(self, page, worker_id: int, tweet_text: str, wait_after: int = 3) -> bool:
         try:
-            # Make sure we're on home page
-            if "home" not in self.page.url:
-                self.page.goto("https://twitter.com/home", wait_until="domcontentloaded")
-                time.sleep(2)
-            
-            # Find the tweet compose box
+            if "home" not in page.url:
+                await page.goto("https://twitter.com/home", wait_until="domcontentloaded")
+                await asyncio.sleep(2)
+
             tweet_box = None
-            
-            # Try multiple selectors
-            selectors = [
+            for sel in [
                 'div[data-testid="tweetTextarea_0"]',
                 'div[role="textbox"][data-testid="tweetTextarea_0"]',
-                'div[aria-label="Post text"]'
-            ]
-            
-            for selector in selectors:
+                'div[aria-label="Post text"]',
+            ]:
                 try:
-                    tweet_box = self.page.wait_for_selector(selector, timeout=5000)
+                    tweet_box = await page.wait_for_selector(sel, timeout=5_000)
                     if tweet_box:
                         break
-                except:
+                except Exception:
                     continue
-            
+
             if not tweet_box:
-                self.page.screenshot(path="debug_screenshot.png")
-                raise Exception("Could not find tweet box. Screenshot saved.")
-            
-            # Click and type the tweet
-            tweet_box.click()
-            time.sleep(0.5)
-            tweet_box.type(tweet_text, delay=50)  # Type with slight delay
-            time.sleep(1)
-            
-            # Find and click Post button
-            post_button = None
-            post_selectors = [
+                await page.screenshot(path=f"debug_worker_{worker_id}.png")
+                raise RuntimeError("Could not find tweet compose box.")
+
+            await tweet_box.click()
+            await asyncio.sleep(0.5)
+            await tweet_box.type(tweet_text, delay=50)
+            await asyncio.sleep(1)
+
+            post_btn = None
+            for sel in [
                 'div[data-testid="tweetButtonInline"]',
                 'button[data-testid="tweetButtonInline"]',
                 'div[data-testid="tweetButton"]',
-            ]
-            
-            for selector in post_selectors:
+            ]:
                 try:
-                    post_button = self.page.wait_for_selector(selector, timeout=3000)
-                    if post_button:
+                    post_btn = await page.wait_for_selector(sel, timeout=3_000)
+                    if post_btn:
                         break
-                except:
+                except Exception:
                     continue
-            
-            if not post_button:
-                raise Exception("Could not find Post button")
-            
-            # Click post
-            post_button.click()
-            time.sleep(wait_after)
-            
-            print(f"✓ Posted: {tweet_text[:60]}{'...' if len(tweet_text) > 60 else ''}")
+
+            if not post_btn:
+                raise RuntimeError("Could not find Post button.")
+
+            await post_btn.click()
+            await asyncio.sleep(wait_after)
+
+            preview = tweet_text[:60] + ("..." if len(tweet_text) > 60 else "")
+            print(f"  [Worker {worker_id}] OK  {preview}")
             return True
-            
-        except Exception as e:
-            print(f"✗ Failed: {e}")
-            print(f"  Tweet: {tweet_text[:60]}...")
+
+        except Exception as exc:
+            print(f"  [Worker {worker_id}] FAIL  {exc}")
             return False
-    
-    def post_tweets(self, tweets, delay_between=8):
-        """
-        Post multiple tweets from a list.
-        
-        Args:
-            tweets: List of tweet text strings
-            delay_between: Seconds to wait between tweets (minimum 5 recommended)
-        
-        Returns:
-            dict: Results with 'successful' and 'failed' counts
-        """
-        if delay_between < 5:
-            print("⚠ Warning: Delay less than 5 seconds may trigger rate limits")
-        
-        print(f"\n{'='*70}")
-        print(f"Posting {len(tweets)} tweets")
-        print(f"Delay between tweets: {delay_between} seconds")
-        print(f"{'='*70}\n")
-        
-        successful = 0
-        failed = 0
-        
-        for i, tweet in enumerate(tweets, 1):
-            print(f"\n[{i}/{len(tweets)}] Posting tweet...")
-            
-            if self.post_tweet(tweet, wait_after=3):
-                successful += 1
-            else:
-                failed += 1
-            
-            # Wait between tweets (except after last one)
-            if i < len(tweets):
-                print(f"⏳ Waiting {delay_between} seconds...")
-                time.sleep(delay_between)
-        
-        # Print summary
-        print(f"\n{'='*70}")
-        print(f"COMPLETE!")
-        print(f"{'='*70}")
-        print(f"✓ Successful: {successful}")
-        print(f"✗ Failed: {failed}")
-        print(f"Total: {len(tweets)}")
-        print(f"{'='*70}\n")
-        
-        return {'successful': successful, 'failed': failed, 'total': len(tweets)}
-    
-    def close(self):
-        """Close browser and clean up."""
-        if self.context:
-            self.context.close()
-        if self.playwright:
-            self.playwright.stop()
+
+    async def _run_worker(
+        self,
+        pw,
+        worker_id: int,
+        profile_dir: str,
+        chunk: list[str],
+        delay_between: int,
+        headless: bool,
+    ) -> dict:
+        """One worker: opens its own persistent context and posts its chunk."""
+        ok = fail = 0
+        ctx = await pw.chromium.launch_persistent_context(
+            user_data_dir=profile_dir,
+            headless=headless,
+            args=["--disable-blink-features=AutomationControlled",
+                  "--disable-dev-shm-usage"],
+            viewport={"width": 1280, "height": 800},
+        )
+        try:
+            page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+            await page.goto("https://twitter.com/home", wait_until="domcontentloaded")
+            await asyncio.sleep(2)
+
+            if "login" in page.url:
+                raise RuntimeError(f"Worker {worker_id}: not logged in — re-run setup_first_time()")
+
+            print(f"  [Worker {worker_id}] Ready — {len(chunk)} tweets assigned")
+
+            for idx, tweet in enumerate(chunk, 1):
+                print(f"  [Worker {worker_id}] [{idx}/{len(chunk)}] Posting...")
+                text = tweet + " (respond in fun mode)."
+                if await self._post_one(page, worker_id, text, wait_after=3):
+                    ok += 1
+                else:
+                    fail += 1
+
+                if idx < len(chunk):
+                    await asyncio.sleep(delay_between)
+
+        finally:
+            await ctx.close()
+
+        print(f"  [Worker {worker_id}] Done — ok={ok} fail={fail}")
+        return {"ok": ok, "fail": fail}
+
+    # ── Public entry point ─────────────────────────────────────────────────
+
+    async def _post_tweets_async(
+        self,
+        tweets: list[str],
+        num_sessions: int,
+        delay_between: int,
+        headless: bool,
+    ) -> dict:
+        num_sessions = max(1, min(num_sessions, 5))
+        chunks       = self._split(tweets, num_sessions)
+
+        print(f"\n{'=' * 70}")
+        print("Concurrent Twitter Poster  (async, persistent profiles)")
+        print(f"  Total tweets  : {len(tweets)}")
+        print(f"  Sessions      : {num_sessions}")
+        print(f"  Tweets/session: ~{math.ceil(len(tweets) / num_sessions)}")
+        print(f"  Delay/tweet   : {delay_between}s per worker")
+        print(f"{'=' * 70}\n")
+
+        print("Cloning browser profiles...")
+        worker_dirs = self._clone_profiles(num_sessions)
+        print()
+
+        async with async_playwright() as pw:
+            tasks = [
+                self._run_worker(pw, i, profile, chunk, delay_between, headless)
+                for i, (profile, chunk) in enumerate(zip(worker_dirs, chunks))
+            ]
+            # All workers run truly in parallel
+            all_results = await asyncio.gather(*tasks)
+
+        total_ok   = sum(r["ok"]   for r in all_results)
+        total_fail = sum(r["fail"] for r in all_results)
+
+        print(f"\n{'=' * 70}")
+        print("COMPLETE")
+        print(f"{'=' * 70}")
+        for i, r in enumerate(all_results):
+            print(f"  Worker {i}: ok={r['ok']}  fail={r['fail']}")
+        print(f"{'─' * 70}")
+        print(f"  Total: ok={total_ok}  fail={total_fail}  ({len(tweets)} tweets)")
+        print(f"{'=' * 70}\n")
+
+        return {"successful": total_ok, "failed": total_fail, "total": len(tweets)}
+
+    def post_tweets(
+        self,
+        tweets: list[str],
+        num_sessions: int = 4,
+        delay_between: int = 10,
+        headless: bool = False,
+    ) -> dict:
+        """Synchronous wrapper — call this from main() as normal."""
+        return asyncio.run(
+            self._post_tweets_async(tweets, num_sessions, delay_between, headless)
+        )
 
 
-# Simple example usage
+# ─────────────────────────────────────────────────────────────────────────────
+# Entry point
+# ─────────────────────────────────────────────────────────────────────────────
+
 def main():
-    # Your list of tweets
-    # my_tweets = td.tweets_0 + td.tweets_1 + td.tweets_2 + td.tweets_3 + td.tweets_4
-    news = nd.news_data
-    poster = TwitterPoster()
-    
-    # STEP 1: First time only - set up your login
-    # Uncomment this line and run once:
+    news = gp.rust_prompts
+    poster = ConcurrentTwitterPoster(profile_dir="./twitter_browser_profile")
+
+    # First time only — uncomment and run once:
     # poster.setup_first_time()
-    
-    # STEP 2: After setup, post your tweets
-    # Comment out setup_first_time() above, then use this:
-    try:
-        poster.start(headless=False)  # Set headless=True to hide browser
-        poster.post_tweets(news, delay_between=10)
-    finally:
-        poster.close()
+
+    poster.post_tweets(
+        tweets=news,
+        num_sessions=4,      # 3-5 parallel windows
+        delay_between=10,
+        headless=False,
+    )
 
 
 if __name__ == "__main__":
