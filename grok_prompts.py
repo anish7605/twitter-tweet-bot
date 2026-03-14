@@ -6360,3 +6360,25 @@ systems_programming_prompts = [
     "@grok What is a BPF map and what types are available?",
     "@grok What is a BPF ring buffer and how is it used for high-performance event streaming?",
 ]
+
+handles = [
+    "@karpathy", "@AndrewYNg", "@kentcdodds", "@addyosmani", "@dan_abramov",
+    "@levelsio", "@codinghorror", "@sama", "@gdb", "@jeresig",
+    "@shanselman", "@martinfowler", "@dhh", "@swyx", "@rauchg",
+    "@flaviocopes", "@lexfridman", "@demishassabis", "@ylecun", "@OfficialLoganK",
+    "@jezhumble", "@allspaw", "@zeldman", "@brad_frost", "@jasonfried",
+    "@tdinh_me", "@chriscoyier", "@paul_irish", "@clattner_llvm", "@gavofyork",
+    "@SergioPereira", "@timbeiko", "@brendan_eich", "@catalinmpit", "@florinpop1705",
+    "@dannythompsondev", "@marcbackes", "@cyriscloete", "@petersteinberger", "@aaditsh",
+    "@isanketsingh", "@shivambhadani_", "@TheBengaluruGuy", "@bagder", "@mitsuhiko",
+    "@briankrebs", "@troyhunt", "@maddiestone", "@cybersecuritysf", "@teriradichel",
+    "@k8em0", "@mikko", "@C_C_Krebs", "@kimzetter", "@SchneierBlog",
+    "@DanielMiessler", "@_JohnHammond", "@taviso", "@clintgibler", "@jeremiahg",
+    "@lennyzeltser", "@anton_chuvakin", "@taosecurity", "@RobertMLee", "@e_kaspersky",
+    "@kevinmitnick", "@MarcusJCarey", "@MagdaChelly", "@AbhayBhargav", "@ZishanAdThandar",
+    "@sastryforensics", "@SANSInstitute", "@Steve_Lockstep", "@JohnFontana", "@saraharmstrongs",
+    "@mary_aiken", "@jamiewoodruff", "@TroelsOerting", "@neirajones", "@fc",
+    "@dave_rel1c", "@JessicaBarker", "@binni", "@GrahamCluley", "@Dave_Kennedy",
+    "@fcamp", "@JenEasterly", "@nicolefv", "@genekim", "@googledevs",
+    "@OpenAI", "@DeepMind", "@hmshah", "@levie", "@randfish"
+]

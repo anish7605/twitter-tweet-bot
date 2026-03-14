@@ -7,6 +7,8 @@ Uses persistent browser profile — no session.json needed.
 """
 
 import time
+import shutil
+import os
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 
@@ -16,11 +18,18 @@ class GrokCommenter:
     KEYWORD = "@grok"
     COMMENT = "@grok"
 
+    # Lock files that prevent two Chromium instances sharing a profile dir
+    _CHROME_SKIP = {
+        "SingletonLock", "SingletonSocket", "SingletonCookie",
+        "RunningChromeVersion", "lockfile", "LOG", "LOG.old",
+    }
+
     def __init__(self, profile_dir: str = "./twitter_browser_profile"):
-        self.profile_dir = profile_dir
-        self.playwright  = None
-        self.context     = None
-        self.page        = None
+        self.profile_dir  = profile_dir
+        self._work_dir    = profile_dir + "_work"   # clean clone used at runtime
+        self.playwright   = None
+        self.context      = None
+        self.page         = None
 
     # ── First-time login ───────────────────────────────────────────────────
 
@@ -43,17 +52,36 @@ class GrokCommenter:
         pw.stop()
         print(f"\n✓ Setup complete! Profile saved to: {self.profile_dir}\n")
 
+    # ── Profile cloning ────────────────────────────────────────────────────
+
+    def _clone_profile(self) -> str:
+        """Copy master profile to a work dir, skipping Chromium lock files."""
+        master = self.profile_dir
+        dest   = self._work_dir
+
+        if not Path(master).exists():
+            raise FileNotFoundError(
+                f"Profile not found: {master}\n"
+                "Run setup_first_time() first."
+            )
+
+        if Path(dest).exists():
+            shutil.rmtree(dest)
+
+        def _ignore(directory, contents):
+            return {f for f in contents if f in self._CHROME_SKIP}
+
+        shutil.copytree(master, dest, ignore=_ignore, symlinks=False)
+        return dest
+
     # ── Browser lifecycle ──────────────────────────────────────────────────
 
     def _launch(self, headless: bool):
-        if not Path(self.profile_dir).exists():
-            raise FileNotFoundError(
-                f"Profile not found: {self.profile_dir}\n"
-                "Run setup_first_time() first."
-            )
+        work_dir = self._clone_profile()
+
         self.playwright = sync_playwright().start()
         self.context = self.playwright.chromium.launch_persistent_context(
-            user_data_dir=self.profile_dir,
+            user_data_dir=work_dir,
             headless=headless,
             args=["--disable-blink-features=AutomationControlled",
                   "--disable-dev-shm-usage"],
@@ -66,6 +94,12 @@ class GrokCommenter:
             self.context.close()
         if self.playwright:
             self.playwright.stop()
+        # Clean up the work clone
+        if Path(self._work_dir).exists():
+            try:
+                shutil.rmtree(self._work_dir)
+            except Exception:
+                pass
 
     # ── Username detection ─────────────────────────────────────────────────
 
@@ -119,7 +153,6 @@ class GrokCommenter:
             if not btn:
                 return 0
             label = btn.get_attribute("aria-label") or ""
-            # "0 Replies", "1 Reply", "12 Replies", or just "Reply"
             parts = label.strip().split()
             if parts and parts[0].isdigit():
                 return int(parts[0])
@@ -129,37 +162,33 @@ class GrokCommenter:
 
     def _already_commented_by_me(self, tweet_url: str) -> bool:
         """
-        Open the tweet detail page and check if we already left a comment.
-        We look for a reply article that:
-          - contains our own username handle, AND
-          - whose text starts with @grok
+        Open the tweet detail page and check if we already left a @grok comment.
+        Skips the first article (the original tweet itself).
         """
+        detail_page = None
         try:
             detail_page = self.context.new_page()
             detail_page.goto(tweet_url, wait_until="domcontentloaded")
             time.sleep(2.5)
 
             replies = detail_page.query_selector_all('article[data-testid="tweet"]')
-            # skip the first article — that's the original tweet itself
             for reply_article in replies[1:]:
-                text = ""
                 try:
                     el = reply_article.query_selector('[data-testid="tweetText"]')
-                    if el:
-                        text = el.inner_text().strip()
+                    if el and el.inner_text().strip().lower().startswith(self.COMMENT.lower()):
+                        detail_page.close()
+                        return True
                 except Exception:
                     pass
-                if text.lower().startswith(self.COMMENT.lower()):
-                    detail_page.close()
-                    return True
 
             detail_page.close()
             return False
         except Exception:
-            try:
-                detail_page.close()
-            except Exception:
-                pass
+            if detail_page:
+                try:
+                    detail_page.close()
+                except Exception:
+                    pass
             return False
 
     def _get_tweet_url(self, article) -> str | None:
@@ -180,15 +209,15 @@ class GrokCommenter:
 
     def _post_comment(self, tweet_url: str, idx: int) -> bool:
         """
-        Open the tweet, click Reply, type COMMENT, submit.
+        Open the tweet detail, click Reply, type COMMENT, submit.
         Returns True on success.
         """
+        detail_page = None
         try:
             detail_page = self.context.new_page()
             detail_page.goto(tweet_url, wait_until="domcontentloaded")
             time.sleep(2.5)
 
-            # Click the reply button on the first (original) tweet article
             articles = detail_page.query_selector_all('article[data-testid="tweet"]')
             if not articles:
                 detail_page.close()
@@ -202,7 +231,6 @@ class GrokCommenter:
             reply_btn.click()
             time.sleep(1.5)
 
-            # Type into the reply composer
             composer = detail_page.wait_for_selector(
                 '[data-testid="tweetTextarea_0"]', timeout=5_000
             )
@@ -211,7 +239,6 @@ class GrokCommenter:
             composer.type(self.COMMENT, delay=50)
             time.sleep(0.8)
 
-            # Submit
             submit_btn = detail_page.wait_for_selector(
                 '[data-testid="tweetButton"]', timeout=4_000
             )
@@ -224,10 +251,11 @@ class GrokCommenter:
 
         except Exception as exc:
             print(f"  [{idx}] ✗ Failed to comment: {exc}")
-            try:
-                detail_page.close()
-            except Exception:
-                pass
+            if detail_page:
+                try:
+                    detail_page.close()
+                except Exception:
+                    pass
             try:
                 self.page.keyboard.press("Escape")
             except Exception:
@@ -249,26 +277,20 @@ class GrokCommenter:
           - If reply count  > 0  AND we already commented → halt
           - If reply count  > 0  AND we haven't commented → post comment anyway
         Non-@grok tweets are silently skipped.
-
-        Args:
-            username:       Your Twitter handle (without @). Auto-detected if None.
-            headless:       Hide the browser window.
-            delay_between:  Seconds to wait between actions.
-            max_scrolls:    Safety cap on scroll rounds.
         """
         self._launch(headless=headless)
 
-        # Navigate home first for username detection
         self.page.goto("https://twitter.com/home", wait_until="domcontentloaded")
         time.sleep(3)
 
         if "login" in self.page.url:
+            self._stop()
             raise RuntimeError("Not logged in. Run setup_first_time() first.")
 
         if not username:
             username = self._get_username()
 
-        replies_url = f"https://twitter.com/{username}/with_replies"
+        replies_url = f"https://twitter.com/{username}"
         print(f"✓ Logged in as @{username}")
         print(f"  Navigating to: {replies_url}\n")
         self.page.goto(replies_url, wait_until="domcontentloaded")
@@ -300,11 +322,9 @@ class GrokCommenter:
                 seen_ids.add(snippet)
                 new_found += 1
 
-                # Must be an actual tweet (has retweet button)
                 if not self._has_retweet_button(article):
                     continue
 
-                # Must start with @grok
                 if not self._starts_with_grok(article):
                     continue
 
@@ -320,17 +340,15 @@ class GrokCommenter:
                     skipped += 1
                     continue
 
-                # ── Already has replies: check if we commented → halt if so
+                # Has replies — check if we already commented → halt if so
                 if reply_count > 0:
                     already = self._already_commented_by_me(tweet_url)
                     if already:
                         print(f"  [{tweet_idx}] We already commented — halting.\n")
                         halted = True
                         break
-                    # Has replies but NOT from us — comment anyway
                     print(f"  [{tweet_idx}] Has {reply_count} reply/replies but not ours — commenting.")
 
-                # ── Post the comment
                 if self._post_comment(tweet_url, tweet_idx):
                     commented += 1
                 else:
@@ -375,7 +393,7 @@ def main():
     # commenter.setup_first_time()
 
     commenter.run(
-        username="Anish81940",   # optional — auto-detected from profile
+        username="grokfc755",
         headless=False,
         delay_between=3.0,
         max_scrolls=30,

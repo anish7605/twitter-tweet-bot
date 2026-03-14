@@ -1,9 +1,10 @@
 """
-Twitter Auto-Reposter
-Scans the Notifications tab, retweets everything not yet retweeted,
-and halts the moment it encounters a tweet that has already been retweeted.
-Likes, follows, and other non-tweet notifications are silently skipped.
+Twitter Auto-Reposter — @grok edition
+Scans the Notifications tab, reposts ONLY tweets that start with "@grok ",
+skips everything else (including other tweets, likes, follows, etc.).
+Halts the moment it encounters a tweet that has already been reposted.
 Uses persistent browser profile — no session.json needed.
+Updated for X.com 2026 behavior (selectors stable, longer waits).
 """
 
 import time
@@ -12,6 +13,8 @@ from pathlib import Path
 
 
 class NotificationReposter:
+
+    KEYWORD = "@grok"
 
     def __init__(self, profile_dir: str = "./twitter_browser_profile"):
         self.profile_dir = profile_dir
@@ -60,8 +63,8 @@ class NotificationReposter:
             viewport={"width": 1280, "height": 800},
         )
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
-        self.page.goto("https://twitter.com/notifications", wait_until="domcontentloaded")
-        time.sleep(3)
+        self.page.goto("https://twitter.com/with_replies", wait_until="domcontentloaded")
+        time.sleep(4)  # Increased for 2026 load times
 
         if "login" in self.page.url:
             raise RuntimeError("Not logged in. Run setup_first_time() again.")
@@ -74,41 +77,39 @@ class NotificationReposter:
         if self.playwright:
             self.playwright.stop()
 
-    # ── Notification type check ────────────────────────────────────────────
+    # ── Notification helpers ───────────────────────────────────────────────
 
     def _is_repostable(self, article) -> bool:
-        """
-        Returns True only if this notification card contains an actual tweet
-        that can be reposted (i.e. has a retweet button).
-        Likes, follows, mentions-without-quote, and system notifications
-        either have no article at all or no retweet button — all return False.
-        """
+        """Has retweet button → it's a tweet notification we can potentially repost."""
         try:
-            btn = article.query_selector('[data-testid="retweet"]')
-            return btn is not None
+            return article.query_selector('[data-testid="retweet"]') is not None
         except Exception:
             return False
 
-    # ── Retweet state check ────────────────────────────────────────────────
+    def _get_tweet_text(self, article) -> str:
+        try:
+            el = article.query_selector('[data-testid="tweetText"]')
+            if el:
+                return el.inner_text().strip()
+        except Exception:
+            pass
+        return ""
+
+    def _starts_with_grok(self, article) -> bool:
+        text = self._get_tweet_text(article)
+        return text.lower().startswith(self.KEYWORD.lower())
 
     def _is_already_retweeted(self, article) -> bool:
-        """
-        Returns True if the retweet button is already in its active state.
-        Only call this AFTER confirming _is_repostable() == True.
-        """
         try:
             btn = article.query_selector('[data-testid="retweet"]')
             if not btn:
                 return False
-
             label = btn.get_attribute("aria-label") or ""
-            if "undo repost" in label.lower():
+            if "undo repost" in label.lower() or "undo retweet" in label.lower():
                 return True
-
-            inner = btn.inner_html()
-            if "rgb(0, 186, 124)" in inner or "color-retweet" in inner:
+            # Fallback: check color/style (green when active)
+            if "rgb(0, 186, 124)" in btn.inner_html():
                 return True
-
             return False
         except Exception:
             return False
@@ -119,22 +120,28 @@ class NotificationReposter:
         try:
             btn = article.query_selector('[data-testid="retweet"]')
             btn.click()
-            time.sleep(1)
+            time.sleep(1.2)
 
             confirm = self.page.wait_for_selector(
-                '[data-testid="retweetConfirm"]', timeout=4_000
+                '[data-testid="retweetConfirm"]', timeout=5000
             )
             confirm.click()
-            time.sleep(1.5)
+            time.sleep(1.8)  # Wait for action to complete
 
             print(f"  [{idx}] ✓ Reposted")
             return True
 
         except Exception as exc:
-            print(f"  [{idx}] ✗ Failed: {exc}")
+            print(f"  [{idx}] ✗ Failed to repost: {exc}")
+            if hasattr(self, 'page') and self.page:
+                try:
+                    self.page.screenshot(path=f"repost-error-{idx}.png")
+                    print(f"     → Screenshot saved: repost-error-{idx}.png")
+                except:
+                    pass
             try:
                 self.page.keyboard.press("Escape")
-            except Exception:
+            except:
                 pass
             return False
 
@@ -143,14 +150,12 @@ class NotificationReposter:
     def run(
         self,
         headless: bool = False,
-        delay_between: float = 2.0,
+        delay_between: float = 2.5,
         max_scrolls: int = 30,
     ):
         """
-        Walk down Notifications and repost every unretweeted tweet.
-        
-        - Likes, follows, and other non-tweet notifications are silently skipped.
-        - Halts immediately when a tweet that was already reposted is found.
+        Walk down Notifications and repost ONLY tweets starting with "@grok ".
+        Halts immediately when an already-reposted @grok tweet is found.
         """
         self._start(headless=headless)
 
@@ -161,7 +166,7 @@ class NotificationReposter:
         seen_ids  = set()
 
         print(f"{'=' * 70}")
-        print("Starting notification scan...")
+        print(f"Starting notification scan — reposting ONLY tweets starting with '{self.KEYWORD} ' …")
         print(f"{'=' * 70}\n")
 
         for scroll_round in range(max_scrolls):
@@ -179,22 +184,25 @@ class NotificationReposter:
                     continue
                 seen_ids.add(snippet)
 
-                # ── Not a repostable tweet (like, follow, etc.) → skip silently
                 if not self._is_repostable(article):
+                    continue  # not a tweet notification
+
+                text_preview = self._get_tweet_text(article)[:50]
+                if not self._starts_with_grok(article):
+                    print(f"[{tweet_idx+1}] Skipped (not starting with {self.KEYWORD}): {text_preview}…")
+                    skipped += 1
                     continue
 
-                # Only repostable tweets count
-                new_tweets_found += 1
+                # It's a @grok tweet → count it
                 tweet_idx += 1
-                print(f"[{tweet_idx}] Checking tweet...")
+                new_tweets_found += 1
+                print(f"[{tweet_idx}] @grok tweet found | {text_preview}…")
 
-                # ── Already reposted → halt immediately, exit everything
                 if self._is_already_retweeted(article):
                     print(f"[{tweet_idx}] Already reposted — halting.\n")
                     halted = True
                     break
 
-                # ── Not yet reposted → repost it
                 if self._retweet(article, tweet_idx):
                     reposted += 1
                 else:
@@ -202,17 +210,16 @@ class NotificationReposter:
 
                 time.sleep(delay_between)
 
-            # Exit scroll loop immediately on halt
             if halted:
                 break
 
             if new_tweets_found == 0:
-                print("No new repostable tweets found after scroll — feed exhausted.")
+                print("No new @grok tweets found after scroll — feed exhausted.")
                 break
 
             print(f"\n  Scrolling for more... (round {scroll_round + 1})\n")
             self.page.evaluate("window.scrollBy(0, window.innerHeight * 3)")
-            time.sleep(2.5)
+            time.sleep(3.0)  # Slightly longer for lazy loading
 
         self._stop()
 
@@ -220,8 +227,8 @@ class NotificationReposter:
         print("DONE")
         print(f"{'=' * 70}")
         print(f"  Reposted : {reposted}")
-        print(f"  Skipped  : {skipped}")
-        print(f"  Halted   : {'Yes — hit an already-reposted tweet' if halted else 'No (reached end of feed)'}")
+        print(f"  Skipped  : {skipped}  (non-@grok or errors)")
+        print(f"  Halted   : {'Yes — hit already-reposted @grok tweet' if halted else 'No (reached end of feed)'}")
         print(f"{'=' * 70}\n")
 
         return {"reposted": reposted, "skipped": skipped, "halted": halted}
@@ -238,9 +245,9 @@ def main():
     # reposter.setup_first_time()
 
     reposter.run(
-        headless=False,
+        headless=False,           # Set to True once stable
         delay_between=2.5,
-        max_scrolls=30,
+        max_scrolls=40,           # Increased a bit — @grok tweets may be sparse
     )
 
 
