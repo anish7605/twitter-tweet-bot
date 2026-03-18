@@ -167,7 +167,7 @@ class ConcurrentTwitterPoster:
 
             for idx, tweet in enumerate(chunk, 1):
                 print(f"  [Worker {worker_id}] [{idx}/{len(chunk)}] Posting...")
-                text = tweet + " Follow & subscribe to my Patreon for exclusive tech and coding content! - https://t.co/nQRZljSpYD"
+                text = tweet + " follow & subscribe my patreon - https://patreon.com/anish755"
                 if await self._post_one(page, worker_id, text, wait_after=3):
                     ok += 1
                 else:
@@ -249,15 +249,15 @@ def main():
     # news = gp.docker_kubernetes_prompts + gp.linux_prompts + gp.pentesting_prompts + gp.scrum_prompts \
     #     + gp.sysadmin_prompts + gp.systems_programming_prompts + gp.cloud_computing_prompts
     
-    prompts = gp.handles
+    prompts = gp.tech_handles
     poster = ConcurrentTwitterPoster(profile_dir="./twitter_browser_profile")
 
     # First time only — uncomment and run once:
-    poster.setup_first_time()
+    # poster.setup_first_time()
 
     poster.post_tweets(
         tweets=prompts,
-        num_sessions=5,      # 3-5 parallel windows
+        num_sessions=3,      # 3-5 parallel windows
         delay_between=10,
         headless=False,
     )
